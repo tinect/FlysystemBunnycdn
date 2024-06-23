@@ -1,7 +1,7 @@
 # Flysystem Adapter for BunnyCDN Storage with S3
 
-> **⚠ ABONDED**
-> BunnyCDN killed S3-Support for the moment, please use [tinect/bunnycdn-sftp-flysystem-adapter](https://github.com/tinect/bunnycdn-sftp-flysystem-adapter)
+> **⚠ ATTENTION**
+> BunnyCDN has no offical S3-Support for the moment. Their API is currently accessible, but it might be break again. To be save: please use [PlatformCommunity/flysystem-bunnycdn](https://github.com/PlatformCommunity/flysystem-bunnycdn) for the moment
 
 [![Test V1](https://github.com/tinect/bunnycdn-s3-flysystem-adapter/actions/workflows/test_v1.yml/badge.svg)](https://github.com/tinect/bunnycdn-s3-flysystem-adapter/actions/workflows/test_v1.yml)
 
