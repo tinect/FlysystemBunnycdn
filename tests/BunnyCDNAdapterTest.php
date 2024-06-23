@@ -96,6 +96,35 @@ class BunnyCDNAdapterTest extends FilesystemAdapterTestCase
         });
     }
 
+    //TODO: implement
+    public function generating_a_public_url(): void
+    {
+        $this->markTestSkipped('Adapter does not supply public URls. It is just announced because of inheritance.');
+    }
+
+    public function generating_a_temporary_url(): void
+    {
+        $this->markTestSkipped('Adapter does not supply temporary URls. It is just announced because of inheritance.');
+    }
+
+    //TODO: implement
+    public function get_checksum(): void
+    {
+        $this->markTestSkipped('Checksum has not been implemented yet.');
+    }
+
+    //TODO: implement
+    public function cannot_get_checksum_for_non_existent_file(): void
+    {
+        $this->markTestSkipped('Checksum has not been implemented yet.');
+    }
+
+    //TODO: implement
+    public function cannot_get_checksum_for_directory(): void
+    {
+        $this->markTestSkipped('Checksum has not been implemented yet.');
+    }
+
     protected static function createFilesystemAdapter(?string $subfolder = null): BunnyCDNAdapter
     {
         if (!isset($_SERVER['STORAGENAME'], $_SERVER['APIKEY'])) {

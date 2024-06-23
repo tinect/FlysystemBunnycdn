@@ -8,7 +8,6 @@ use AsyncAws\S3\S3Client;
 use League\Flysystem\AsyncAwsS3\AsyncAwsS3Adapter;
 use League\Flysystem\Config;
 use League\Flysystem\FileAttributes;
-use League\Flysystem\StorageAttributes;
 use League\Flysystem\UnableToCopyFile;
 use League\Flysystem\UnableToDeleteFile;
 use League\Flysystem\UnableToRetrieveMetadata;
@@ -104,17 +103,6 @@ class BunnyCDNAdapter extends AsyncAwsS3Adapter
             null,
             $mimeType
         );
-    }
-
-    /*
-     * TODO: check the reason. Maybe the timezone is missing to be calculated correctly
-     */
-    public function lastModified(string $path): FileAttributes
-    {
-        $result = parent::lastModified($path)->jsonSerialize();
-        $result[StorageAttributes::ATTRIBUTE_LAST_MODIFIED] += 7200;
-
-        return FileAttributes::fromArray($result);
     }
 
     /*
