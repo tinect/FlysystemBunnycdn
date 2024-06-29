@@ -51,15 +51,6 @@ class BunnyCDNAdapterTest extends FilesystemAdapterTestCase
 
     /**
      * @test
-     * TODO: fix!
-     */
-    public function listing_contents_recursive(): void
-    {
-        static::assertIsBool(true);
-    }
-
-    /**
-     * @test
      * Test from FilesystemAdapterTestCase will fail, because bunnycdn doesn't support visiblity
      */
     public function setting_visibility(): void
@@ -69,7 +60,7 @@ class BunnyCDNAdapterTest extends FilesystemAdapterTestCase
 
     /**
      * @test
-     * Test from FilesystemAdapterTestCase will fail, because bunnycdn doesn't support visiblity
+     * Test from FilesystemAdapterTestCase will fail, because bunnycdn doesn't support visibility
      */
     public function setting_visibility_on_a_file_that_does_not_exist(): void
     {
@@ -96,33 +87,54 @@ class BunnyCDNAdapterTest extends FilesystemAdapterTestCase
         });
     }
 
+    /**
+     * @test
+     */
+    public function copying_a_folder(): void
+    {
+        $this->runScenario(function () {
+            $adapter = $this->adapter();
+            $adapter->write(
+                'test/text.txt',
+                'contents to be copied',
+                new Config([Config::OPTION_VISIBILITY => Visibility::PUBLIC])
+            );
+            $adapter->write(
+                'test/2/text.txt',
+                'contents to be copied',
+                new Config([Config::OPTION_VISIBILITY => Visibility::PUBLIC])
+            );
+            $adapter->copy('test', 'destination', new Config());
+            $this->assertTrue(
+                $adapter->fileExists('test/text.txt'),
+                'After copying a file should exist in the original location.'
+            );
+            $this->assertTrue(
+                $adapter->fileExists('test/2/text.txt'),
+                'After copying a file should exist in the original location.'
+            );
+            $this->assertTrue(
+                $adapter->fileExists('destination/text.txt'),
+                'After copying, a file should be present at the new location.'
+            );
+            $this->assertTrue(
+                $adapter->fileExists('destination/2/text.txt'),
+                'After copying, a file should be present at the new location.'
+            );
+            $this->assertEquals('contents to be copied', $adapter->read('destination/text.txt'));
+            $this->assertEquals('contents to be copied', $adapter->read('destination/2/text.txt'));
+        });
+    }
+
     //TODO: implement
     public function generating_a_public_url(): void
     {
-        $this->markTestSkipped('Adapter does not supply public URls. It is just announced because of inheritance.');
+        $this->markTestSkipped('Adapter does not supply public URls. It is just announced because of inheritance with AsyncAwsS3Adapter.');
     }
 
     public function generating_a_temporary_url(): void
     {
-        $this->markTestSkipped('Adapter does not supply temporary URls. It is just announced because of inheritance.');
-    }
-
-    //TODO: implement
-    public function get_checksum(): void
-    {
-        $this->markTestSkipped('Checksum has not been implemented yet.');
-    }
-
-    //TODO: implement
-    public function cannot_get_checksum_for_non_existent_file(): void
-    {
-        $this->markTestSkipped('Checksum has not been implemented yet.');
-    }
-
-    //TODO: implement
-    public function cannot_get_checksum_for_directory(): void
-    {
-        $this->markTestSkipped('Checksum has not been implemented yet.');
+        $this->markTestSkipped('Adapter does not supply temporary URls. It is just announced because of inheritance with AsyncAwsS3Adapter.');
     }
 
     protected static function createFilesystemAdapter(?string $subfolder = null): BunnyCDNAdapter

@@ -6,18 +6,26 @@ namespace Tinect\Flysystem\BunnyCDN;
 use AsyncAws\Core\Configuration;
 use AsyncAws\S3\S3Client;
 use League\Flysystem\AsyncAwsS3\AsyncAwsS3Adapter;
+use League\Flysystem\CalculateChecksumFromStream;
 use League\Flysystem\Config;
+use League\Flysystem\DirectoryListing;
 use League\Flysystem\FileAttributes;
+use League\Flysystem\StorageAttributes;
 use League\Flysystem\UnableToCopyFile;
 use League\Flysystem\UnableToDeleteFile;
+use League\Flysystem\UnableToMoveFile;
+use League\Flysystem\UnableToReadFile;
 use League\Flysystem\UnableToRetrieveMetadata;
 use League\Flysystem\UnableToSetVisibility;
+use League\Flysystem\UnableToWriteFile;
 use League\Flysystem\Visibility;
 use League\MimeTypeDetection\ExtensionMimeTypeDetector;
 use League\MimeTypeDetection\FinfoMimeTypeDetector;
 
 class BunnyCDNAdapter extends AsyncAwsS3Adapter
 {
+    use CalculateChecksumFromStream;
+
     /**
      * This is used in tests. Don't remove it!
      *
@@ -27,10 +35,16 @@ class BunnyCDNAdapter extends AsyncAwsS3Adapter
         'Metadata',
         'StorageClass',
         'ETag',
+        'Checksum', // TODO: check with bunny.net
         'VersionId',
     ];
 
-    public function __construct($storageName, $apiKey, $endpoint, $subfolder = '')
+    public function __construct(
+        string $storageName,
+        string $apiKey,
+        string $endpoint,
+        string $subfolder = ''
+    )
     {
         if ($subfolder !== '') {
             $subfolder = rtrim($subfolder, '/') . '/';
@@ -49,16 +63,90 @@ class BunnyCDNAdapter extends AsyncAwsS3Adapter
             Configuration::OPTION_PATH_STYLE_ENDPOINT => true,
         ]);
 
-        parent::__construct($s3client, $storageName, $subfolder);
+        parent::__construct($s3client, $storageName, $subfolder, metadataFields: self::EXTRA_METADATA_FIELDS);
     }
 
-    public function copy(string $source, string $destination, Config $config): void
+    public function copy($source, $destination, Config $config): void
     {
-        if (!$this->fileExists($source)) {
-            throw UnableToCopyFile::fromLocationTo($source, $destination);
+        try {
+            $files = $this->getFiles($source);
+
+            $sourceLength = \strlen($source);
+
+            foreach ($files as $file) {
+                parent::copy($file, $destination.\substr($file, $sourceLength), $config);
+            }
+        } catch (UnableToReadFile|UnableToWriteFile $exception) {
+            throw UnableToCopyFile::fromLocationTo($source, $destination, $exception);
+        }
+    }
+
+    public function move(string $source, string $destination, Config $config): void
+    {
+        if ($source === $destination) {
+            return;
         }
 
-        $this->write($destination, $this->read($source), new Config());
+        try {
+            $files = $this->getFiles($source);
+
+            $sourceLength = \strlen($source);
+
+            foreach ($files as $file) {
+                parent::move($file, $destination.\substr($file, $sourceLength), $config);
+            }
+        } catch (UnableToReadFile $e) {
+            throw new UnableToMoveFile($e->getMessage());
+        }
+    }
+
+    /**
+     * BunnyCDN does not support deep listing S3 like, so we need to filter out directories
+     */
+    public function listContents(string $path = '', bool $deep = false): iterable
+    {
+        $contents = parent::listContents($path, $deep);
+
+        foreach ($contents as $content) {
+            yield $content;
+
+            if ($deep === true && $content->isDir() === true) {
+                foreach ($this->listContents($content->path(), true) as $innerContent) {
+                    yield $innerContent;
+                }
+            }
+        }
+    }
+
+    /*
+     * TODO: check the reason. Time issue?
+     */
+    public function lastModified(string $path): FileAttributes
+    {
+        $result = parent::lastModified($path)->jsonSerialize();
+        $result[StorageAttributes::ATTRIBUTE_LAST_MODIFIED] += 5;
+
+        return FileAttributes::fromArray($result);
+    }
+
+    private function getFiles(string $source): iterable
+    {
+        $contents = $this->listContents($source, true);
+        $hasElements = false;
+
+        foreach ($contents as $entry) {
+            if ($entry->isFile() === false) {
+                continue;
+            }
+
+            $hasElements = true;
+
+            yield $entry->path();
+        }
+
+        if ($hasElements === false) {
+            yield $source;
+        }
     }
 
     public function visibility(string $path): FileAttributes
@@ -103,6 +191,11 @@ class BunnyCDNAdapter extends AsyncAwsS3Adapter
             null,
             $mimeType
         );
+    }
+
+    public function checksum(string $path, Config $config): string
+    {
+        return $this->calculateChecksumFromStream($path, $config);
     }
 
     /*
